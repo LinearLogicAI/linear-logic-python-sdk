@@ -19,7 +19,7 @@ This is the officially supported Python library for using Linear Logic's APIs.
     2. [Model Runs](#model-runs)
  4. [Models](#models)
 
-###Initializing the client
+### Initializing the client
 
 You can initialize a new client instance using your account credentials or an organisation-wide API token.
 
@@ -37,7 +37,7 @@ from linlog import LinLogClient
 client = LinLogClient.init_from_token("token")
 ```
 
-###Projects
+### Projects
 
 You can list all projects in your organisation or retrieve a specific project by its ID. Note: the ID of a project always starts with `p_` 
 
@@ -49,7 +49,7 @@ projects = client.get_projects()
 project = client.get_project("id")
 ```
 
-####Batches
+#### Batches
 
 Batches allow you to partition the tasks within a project. Batches can tie to specific datasets you use internally, or can be used to note which tasks were part of a specific sprints for example  
 
@@ -60,7 +60,7 @@ You can list all batches within a project:
 batches = client.get_project_batches("project_id")
 ```
 
-####Project Tasks
+#### Project Tasks
 
 Projects are a collection of tasks that require annotations or manual reviews. Tasks within a project can be retrieved as shown in the example below. There are multiple filters you can apply to the search, valid filters are: `limit`, `offset`, `status`, `created_date`, `created_date__gte`, `created_date__lte`, `created_date__gt`, `created_date__lt`, `complete`, `rejected`, `work_started`
 
@@ -72,7 +72,7 @@ client.get_project_tasks(
 )
 ```
 
-###Datasets
+### Datasets
 
 Datasets are a collection of completed tasks and bring together your data, annotations and model predictions. Note: the ID of a dataset always starts with `d_` 
 
@@ -86,7 +86,7 @@ datasets = client.get_datasets()
 dataset = client.get_dataset("id")
 ```
 
-####Dataset Tasks
+#### Dataset Tasks
 
 Retrieving tasks from a dataset is identical to that of projects, the only exception is that the tasks are always complete and may have additional model runs attached to them.
 
@@ -95,7 +95,7 @@ Retrieving tasks from a dataset is identical to that of projects, the only excep
 client.get_dataset_tasks("dataset_id")
 ```
 
-####Model Runs
+#### Model Runs
 
 When you completed training a model you can start adding model runs to datasets. This allows you to generate key insights into the performance of your current model, but the results can also be used to compare the model with other models. 
 
@@ -111,11 +111,11 @@ for (prediction, score) in predictions:
                             confidence_score=score)
 ```
 
-###Models
+### Models
 
 You can bring your own models to Linear Logic and use the platform to find the optimal model configuration. Learn how you can integrate your models with Linear Logic.
 
-####Training models locally
+#### Training models locally
 
 ```python
 from linlog import ModelTrainer
