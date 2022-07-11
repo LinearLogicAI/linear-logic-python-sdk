@@ -6,7 +6,7 @@ This is the officially supported Python library for using Linear Logic's APIs.
 
 ## Installation
 
-`pip install --upgrade linlog`
+`pip install --upgrade git+https://github.com/linearlogicai/linear-logic-python-sdk.git`
 
 ## Getting started
 
