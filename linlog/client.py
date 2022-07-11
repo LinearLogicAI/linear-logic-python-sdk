@@ -1,4 +1,5 @@
 from linlog import constants
+from linlog.constants import BASE_URL
 from linlog.controller import Controller
 from linlog.utils import Paginator
 
@@ -17,7 +18,7 @@ class LinLogClient:
 
         self.auth_credentials = (email, password) if auth_type == "credentials" else (email, "")
         self.auth_type = auth_type
-        self.controller = Controller(self.auth_credentials, base_url=base_url)
+        self.controller = Controller(self.auth_credentials, base_url=base_url if base_url else BASE_URL)
 
     @staticmethod
     def init_from_credentials(email: str, password: str, base_url: str = None):
