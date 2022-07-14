@@ -54,10 +54,10 @@ class Controller:
         url = f"{self.base_url}/{endpoint}"
         res = self._http_request(method, url, headers, auth, params, body, files, data)
 
-        if not res.status_code == 200:
+        if not res.status_code in [200, 201]:
             raise Exception(res.text, res.status_code)
 
-        return res.json()
+        return res.json() if len(res.text) > 1 else None
 
     @staticmethod
     def _http_request(
@@ -118,4 +118,13 @@ class Controller:
             auth=self.auth,
             params=params,
             body=data
+        )
+
+    def delete_request(self, endpoint, params=None):
+        return self._perform_api_request(
+            "DELETE",
+            endpoint,
+            headers=self.headers,
+            auth=self.auth,
+            params=params,
         )

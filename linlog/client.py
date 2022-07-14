@@ -1,3 +1,5 @@
+from typing import List
+
 from linlog import constants
 from linlog.constants import BASE_URL
 from linlog.controller import Controller
@@ -28,9 +30,47 @@ class LinLogClient:
     def init_from_token(token, base_url: str = None):
         return LinLogClient(token, "", base_url)
 
-    def create_task(self,
-                    task_type: constants.TaskType, ):
-        pass
+    def get_organisation(self):
+        endpoint = f"organisations"
+        return self.controller.get_request(endpoint)
+
+    def create_project(self,
+                       title: str,
+                       project_type: str,
+                       objects_to_annotate,
+                       **args):
+        endpoint = "projects"
+        return self.controller.post_request(endpoint, {
+            "title": title,
+            "type": project_type,
+            "objects_to_annotate": objects_to_annotate,
+            **args
+        })
+
+    def copy_project_taxonomy(self,
+                              origin_project_id: str,
+                              target_project_id: str):
+        """
+        :param origin_project_id: the project where the taxonomy will be imported into
+        :param target_project_id: the project where the taxonomy comes from
+        """
+
+        endpoint = f"projects/{origin_project_id}/import-taxonomy"
+        return self.controller.post_request(endpoint, {
+            "project_id": target_project_id
+        })
+
+    def get_project_workflows(self, id: str):
+        endpoint = f"projects/{id}/workflows"
+        return self.controller.get_request(endpoint)
+
+    def set_project_workflows(self, project_id: str, workflows):
+        endpoint = f"projects/{project_id}/workflows"
+        return self.controller.post_request(endpoint, workflows)
+
+    def delete_project(self, id: str):
+        endpoint = f"projects/{id}"
+        return self.controller.delete_request(endpoint)
 
     def get_projects(self):
         endpoint = "projects"
@@ -44,11 +84,9 @@ class LinLogClient:
         endpoint = f"projects/{id}/batches"
         return self.controller.get_request(endpoint)
 
-    def get_project_tasks(self, id: str, kwargs=None):
-        if kwargs is None:
-            kwargs = {}
+    def get_project_tasks(self, id: str, **kwargs):
 
-        for key in kwargs.keys():
+        for key in kwargs:
             if key not in [
                 'limit', 'offset', 'status', 'created_date', 'created_date__gte', 'created_date__lte',
                 'created_date__gt', 'created_date__lt', 'complete', 'rejected', 'work_started'
@@ -70,6 +108,25 @@ class LinLogClient:
             response["next"]
         )
 
+    def create_categorisation_task(self,
+                                   project_id: str,
+                                   attachment: str,
+                                   attachment_type: str,
+                                   batch_name: str = None,
+                                   annotations = None,
+                                   complete: bool = False):
+        endpoint = 'tasks/categorisation'
+
+        self.controller.post_request(endpoint, {
+            "project": project_id,
+            "attachment": attachment,
+            "attachment_type": attachment_type,
+            "batch_name": batch_name if batch_name else "main (default)",
+            "annotations": annotations if bool(annotations) else [],
+            "type": 'categorisation',
+            "complete": complete
+        })
+
     def get_datasets(self):
         endpoint = "datasets"
         return self.controller.get_request(endpoint)
@@ -77,6 +134,10 @@ class LinLogClient:
     def get_dataset(self, id: str):
         endpoint = f"datasets/{id}"
         return self.controller.get_request(endpoint)
+
+    def delete_tasks(self, task_ids: List[str]):
+        endpoint = f"tasks"
+        return self.controller.post_request(endpoint, { "task_ids": task_ids })
 
     def create_model_run(self,
                          dataset_id: str,

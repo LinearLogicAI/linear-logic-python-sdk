@@ -8,3 +8,4 @@ class TaskType(Enum):
     Image = "image"
     Categorisation = "categorisation"
     NamedEntities = "ner"
+
