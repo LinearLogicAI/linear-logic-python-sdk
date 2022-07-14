@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='linlog',
-    version='0.1',
+    version='0.2',
     author="Linear Logic Inc.",
     author_email="support@linearlogic.ai",
     description="Linear Logic Python SDK",
