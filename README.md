@@ -11,13 +11,14 @@ This is the officially supported Python library for using Linear Logic's APIs.
 ## Getting started
 
  1. [Initializing the client](#initializing-the-client)
- 2. [Projects](#projects)
+ 2. [Organisations](#organisations)
+ 3. [Projects](#projects)
     1. [Batches](#batches)
     2. [Project Tasks](#project-tasks)
- 3. [Datasets](#datasets)
+ 4. [Datasets](#datasets)
     1. [Tasks](#dataset-tasks)
     2. [Model Runs](#model-runs)
- 4. [Models](#models)
+ 5. [Models](#models)
 
 ### Initializing the client
 
@@ -37,7 +38,25 @@ from linlog import LinLogClient
 client = LinLogClient.init_from_token("token")
 ```
 
+### Organisations
+
+All users are registered to one organisation. To retrieve all groups and members registered to the organisation simply call the `get_organisation()` function. It doesn't require any parameters because all users are registered to exactly one organisation. Therefore the organisation corresponding to the user can be derived from the authentication.
+
+```python
+client.get_organisation()
+```
+
 ### Projects
+
+Projects can be created from the dashboard or programmatically from the API. The following example shows the creation of an image project which allows annotating cats with polygons.
+
+```python
+client.create_project(
+    title="Sample Project", 
+    project_type="image", 
+    objects_to_annotate=[{ "label": "Cat", "task_type": "polygon" }]
+)
+```
 
 You can list all projects in your organisation or retrieve a specific project by its ID. Note: the ID of a project always starts with `p_` 
 
@@ -47,6 +66,14 @@ projects = client.get_projects()
 
 # get project by id
 project = client.get_project("id")
+```
+
+
+
+Project are also easily deleted from their ID. Be aware that deleting a project will also delete all associated tasks with it.
+
+```python
+client.delete_project("project_id")
 ```
 
 #### Batches
@@ -62,15 +89,67 @@ batches = client.get_project_batches("project_id")
 
 #### Project Tasks
 
+Tasks can be created programmatically using the API. The following example creates a categorisation task with the text *"Hello, world"*.
+
+```python
+# sample categorisation task
+client.create_categorisation_task("project_id", "Hello, world")
+```
+
+Categorisation tasks take four valid attachment types: `image`, `text`, `iframe` and `html`. If the attachment type is left blank the attachment will automatically be interepeted as text.
+
+```python
+# specify attachment type
+client.create_categorisation_task(
+    "project_id",
+    attachment="<strong>Hi!</strong>",
+    attachment_type="html"
+)
+```
+
+You can also pre-annotate the tasks by setting the annotations attribute.
+
+```python
+# pre-annotated annotations
+client.create_categorisation_task(
+    "project_id", 
+    attachment="Paris", 
+    annotations=[{ "label": "Location", "task_type": "categorisation"}]
+)
+
+# auto-complete task
+client.create_categorisation_task(
+    "project_id",
+    "This task does not require annotating",
+    complete=True
+)
+
+```
+
+Eventually you may wish to archive and delete the tasks. Simply obtain the IDs of the tasks you wish to remove and call the `delete_tasks` function.
+
+```python
+client.delete_tasks(["task_id_1", "task_id_2"])
+```
+
+
 Projects are a collection of tasks that require annotations or manual reviews. Tasks within a project can be retrieved as shown in the example below. There are multiple filters you can apply to the search, valid filters are: `limit`, `offset`, `status`, `created_date`, `created_date__gte`, `created_date__lte`, `created_date__gt`, `created_date__lt`, `complete`, `rejected`, `work_started`
 
 ```python
 # example: get all completed tasks from a project
-client.get_project_tasks(
+tasks = client.get_project_tasks(
     id="project_id",
     complete=True
 )
 ```
+
+The `get_project_tasks` returns a `Paginator` instance. This allows to get the current offset, limit and total count from the request.
+- The offset gives the offset of the current resultset.
+- The limit shows the maximum number of instances returned from a single request.
+- The count gives the total number of instances present in the entire resultset.
+
+The offset, limit and value can be accessed as properties from the Paginator:
+> `(tasks.offset, tasks.limit, tasks.count)`
 
 ### Datasets
 
