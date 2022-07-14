@@ -1,4 +1,4 @@
-<a href="https://explosion.ai"><img src="https://linearlogic.ai/images/logo-small.png" width="20" style="margin-top: 20px;" align="right" /></a>
+<a href="https://explosion.ai"><img src="https://linearlogic.ai/images/logo-small.png" width="20" style="margin-top: 50px;" align="right" /></a>
 
 # Linear Logic Python SDK
 
