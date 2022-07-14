@@ -1,44 +1,103 @@
+<a href="https://explosion.ai"><img src="https://linearlogic.ai/images/logo-small.png" width="20" style="margin-top: 20px;" align="right" /></a>
 
 # Linear Logic Python SDK
 
 This is the officially supported Python library for using Linear Logic's APIs.
 
 
-## Installation
+## 📖 Installation
+
+Install the SDK using PIP:
 
 `pip install --upgrade git+https://github.com/linearlogicai/linear-logic-python-sdk.git`
 
-## Getting started
+## 💡 Getting started
 
- 1. [Initializing the client](#initializing-the-client)
- 2. [Organisations](#organisations)
- 3. [Projects](#projects)
+ 1. [Quickstart](#quickstart)
+ 2. [Initializing the client](#initializing-the-client)
+ 3. [Organisations](#organisations)
+ 4. [Projects](#projects)
     1. [Batches](#batches)
     2. [Project Tasks](#project-tasks)
- 4. [Datasets](#datasets)
-    1. [Tasks](#dataset-tasks)
+    3. [Project Workflows](#project-workflows)
+ 5. [Datasets](#datasets)
+    1. [Dataset Tasks](#dataset-tasks)
     2. [Model Runs](#model-runs)
- 5. [Models](#models)
+ 6. [Models](#models)
 
-### Initializing the client
+## 🚀 Quickstart
+
+### 1. Create a categorisation project 
+```python
+from linlog import LinLogClient
+
+client = LinLogClient.init_from_token("token")
+
+# Create project
+cat_project = client.create_project(
+    title="Categorisation Project", 
+    project_type="categorisation", 
+    objects_to_annotate=[
+        { "label": "Positive", "task_type": "categorisation" },
+        { "label": "Negative", "task_type": "categorisation" }
+    ]
+)
+
+# Add task to project
+client.create_categorisation_task(
+    cat_project['id'], 
+    "Every Star Wars release is amazing!"
+)
+```
+
+### 2. Remove completed tasks 
+```python
+from linlog import LinLogClient
+
+client = LinLogClient.init_from_token("token")
+
+# Get the first available project
+cat_project = client.get_projects()[0]
+
+# Retrieve all completed tasks
+tasks = client.get_project_tasks(
+    id=cat_project['id'],
+    complete=True
+)
+
+while tasks.offset + tasks.limit < tasks.count + 1:
+    # Perform removal
+    client.delete_tasks([t['id'] for t in tasks])
+    
+    # Get next tasks
+    tasks = client.get_project_tasks(
+        id=cat_project['id'],
+        complete=True,
+        offset=tasks.offset + tasks.limit
+    )
+```
+
+# SDK Instructions
+
+## Initializing the client
 
 You can initialize a new client instance using your account credentials or an organisation-wide API token.
 
-**From credentials**
+### From credentials
 ```python
 from linlog import LinLogClient
 
 client = LinLogClient.init_from_credentials("email", "password")
 ```
 
-**From token**
+### From token
 ```python
 from linlog import LinLogClient
 
 client = LinLogClient.init_from_token("token")
 ```
 
-### Organisations
+## Organisations
 
 All users are registered to one organisation. To retrieve all groups and members registered to the organisation simply call the `get_organisation()` function. It doesn't require any parameters because all users are registered to exactly one organisation. Therefore the organisation corresponding to the user can be derived from the authentication.
 
@@ -46,7 +105,7 @@ All users are registered to one organisation. To retrieve all groups and members
 client.get_organisation()
 ```
 
-### Projects
+## Projects
 
 Projects can be created from the dashboard or programmatically from the API. The following example shows the creation of an image project which allows annotating cats with polygons.
 
@@ -114,7 +173,7 @@ You can also pre-annotate the tasks by setting the annotations attribute.
 client.create_categorisation_task(
     "project_id", 
     attachment="Paris", 
-    annotations=[{ "label": "Location", "task_type": "categorisation"}]
+    annotations=[{ "label": "Location", "task_type": "categorisation" }]
 )
 
 # auto-complete task
@@ -150,6 +209,10 @@ The `get_project_tasks` returns a `Paginator` instance. This allows to get the c
 
 The offset, limit and value can be accessed as properties from the Paginator:
 > `(tasks.offset, tasks.limit, tasks.count)`
+
+#### Project Workflows
+
+
 
 ### Datasets
 
