@@ -76,7 +76,7 @@ class Controller:
             total=HTTP_TOTAL_RETRIES,
             backoff_factor=HTTP_RETRY_BACKOFF_FACTOR,
             status_forcelist=HTTP_STATUS_FORCE_LIST,
-            allowed_methods=HTTP_RETRY_ALLOWED_METHODS,
+            #allowed_methods=HTTP_RETRY_ALLOWED_METHODS,
             raise_on_status=False,
         )
 
