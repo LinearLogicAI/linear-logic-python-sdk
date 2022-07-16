@@ -1,7 +1,8 @@
 import requests
+import copy
 from typing import Tuple
 from linlog.constants import BASE_URL
-from requests.adapters import Response, Retry, HTTPAdapter
+from requests.adapters import Response
 
 HTTP_TOTAL_RETRIES = 3
 HTTP_RETRY_BACKOFF_FACTOR = 2
@@ -52,6 +53,7 @@ class Controller:
     ):
         """Generic HTTP request method with error handling."""
         url = f"{self.base_url}/{endpoint}"
+
         res = self._http_request(method, url, headers, auth, params, body, files, data)
 
         if not res.status_code in [200, 201]:
@@ -70,38 +72,26 @@ class Controller:
             files=None,
             data=None,
     ) -> Response:
-
-        sess = requests.Session()
-        retry_strategy = Retry(
-            total=HTTP_TOTAL_RETRIES,
-            backoff_factor=HTTP_RETRY_BACKOFF_FACTOR,
-            status_forcelist=HTTP_STATUS_FORCE_LIST,
-            #allowed_methods=HTTP_RETRY_ALLOWED_METHODS,
-            raise_on_status=False,
-        )
-
         s = requests.Session()
-
-        sess.mount('http://', HTTPAdapter(max_retries=retry_strategy))
-        sess.mount('https://', HTTPAdapter(max_retries=retry_strategy))
+        s.auth = auth
 
         params = params or {}
         body = body or None
 
-        res = s.request(
+        import json
+        return requests.request(
             method=method,
             url=url,
-            headers=headers,
-            auth=auth,
             params=params,
             json=body,
             files=files,
-            data=data,
+            data=json.dumps(data) if not files else data,
+            headers=headers,
+            auth=auth
         )
 
-        return res
-
     def get_request(self, endpoint, params=None):
+
         return self._perform_api_request(
             "GET",
             endpoint,
@@ -110,14 +100,25 @@ class Controller:
             params=params
         )
 
-    def post_request(self, endpoint, data, params=None):
+    def post_request(self, endpoint, data, params=None, files=None, headers=None):
+        if not headers:
+            headers = {}
+
+        _headers = copy.deepcopy(self.headers)
+        for key in headers.keys():
+            _headers[key] = headers[key]
+
+        if bool(files) and 'Content-Type' in _headers.keys():
+            del _headers['Content-Type']
+
         return self._perform_api_request(
             "POST",
             endpoint,
-            headers=self.headers,
+            headers=_headers,
             auth=self.auth,
             params=params,
-            body=data
+            data=data,
+            files=files
         )
 
     def delete_request(self, endpoint, params=None):

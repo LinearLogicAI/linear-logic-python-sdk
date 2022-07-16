@@ -1,6 +1,5 @@
+import json
 from typing import List
-
-from linlog import constants
 from linlog.constants import BASE_URL
 from linlog.controller import Controller
 from linlog.utils import Paginator
@@ -126,6 +125,38 @@ class LinLogClient:
             "type": 'categorisation',
             "complete": complete
         })
+
+    def upload_image_task(self,
+                          project_id: str,
+                          image_path: str,
+                          task_type: str = "image",
+                          annotations = None,
+                          complete: bool = False):
+
+        endpoint = 'tasks/image/upload'
+
+        if not annotations:
+            annotations = []
+
+        files = {
+            'image': open(image_path, 'rb')
+        }
+        data = {
+            "payload": json.dumps({
+                "project": project_id,
+                "batch_name": None,
+                "external_data": False,
+                "complete": complete,
+                "annotations": annotations,
+                "type": task_type,
+                "image": {}
+            })
+        }
+
+        self.controller.post_request(endpoint,
+                                     data=data,
+                                     files=files,
+                                     headers={})
 
     def get_datasets(self):
         endpoint = "datasets"
