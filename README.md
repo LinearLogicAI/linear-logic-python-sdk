@@ -38,8 +38,8 @@ cat_project = client.create_project(
     title="Categorisation Project", 
     project_type="categorisation", 
     objects_to_annotate=[
-        { "label": "Positive", "task_type": "categorisation" },
-        { "label": "Negative", "task_type": "categorisation" }
+        { "name": "Positive", "task_type": "categorisation" },
+        { "name": "Negative", "task_type": "categorisation" }
     ]
 )
 
@@ -113,7 +113,7 @@ Projects can be created from the dashboard or programmatically from the API. The
 client.create_project(
     title="Sample Project", 
     project_type="image", 
-    objects_to_annotate=[{ "label": "Cat", "task_type": "polygon" }]
+    objects_to_annotate=[{ "name": "Cat", "task_type": "polygon" }]
 )
 ```
 
@@ -173,7 +173,7 @@ You can also pre-annotate the tasks by setting the annotations attribute.
 client.create_categorisation_task(
     "project_id", 
     attachment="Paris", 
-    annotations=[{ "label": "Location", "task_type": "categorisation" }]
+    annotations=[{ "name": "Location", "task_type": "categorisation" }]
 )
 
 # auto-complete task

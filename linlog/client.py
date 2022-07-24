@@ -110,7 +110,7 @@ class LinLogClient:
     def create_categorisation_task(self,
                                    project_id: str,
                                    attachment: str,
-                                   attachment_type: str,
+                                   attachment_type: str = "text",
                                    batch_name: str = None,
                                    annotations = None,
                                    complete: bool = False):
