@@ -1,6 +1,7 @@
+import os
 import json
 from typing import List
-from linlog.constants import BASE_URL
+from linlog.constants import BASE_URL, MODULE_ROOT
 from linlog.controller import Controller
 from linlog.utils import Paginator
 
@@ -20,6 +21,18 @@ class LinLogClient:
         self.auth_credentials = (email, password) if auth_type == "credentials" else (email, "")
         self.auth_type = auth_type
         self.controller = Controller(self.auth_credentials, base_url=base_url if base_url else BASE_URL)
+
+    @staticmethod
+    def local():
+        try:
+            with open(MODULE_ROOT + os.sep + "auth.json", "r") as f:
+                auth = json.load(f)
+                if auth['mode'] == "credentials":
+                    return LinLogClient(auth['email'], auth['password'], None, "credentials")
+                else:
+                    return LinLogClient(auth['token'], "", None)
+        except FileNotFoundError:
+            raise Exception("Authentication credentials not provided, use 'linlog authenticate'")
 
     @staticmethod
     def init_from_credentials(email: str, password: str, base_url: str = None):
@@ -113,7 +126,8 @@ class LinLogClient:
                                    attachment_type: str = "text",
                                    batch_name: str = None,
                                    annotations = None,
-                                   complete: bool = False):
+                                   complete: bool = False,
+                                   unique_id: str = None):
         endpoint = 'tasks/categorisation'
 
         self.controller.post_request(endpoint, {
@@ -123,7 +137,50 @@ class LinLogClient:
             "batch_name": batch_name if batch_name else "main (default)",
             "annotations": annotations if bool(annotations) else [],
             "type": 'categorisation',
-            "complete": complete
+            "complete": complete,
+            "unique_id": unique_id
+        })
+
+    def create_ner_task(self,
+                        project_id: str,
+                        attachment: str,
+                        batch_name: str = None,
+                        annotations = None,
+                        tokens = None,
+                        complete: bool = False,
+                        unique_id: str = None):
+        endpoint = 'tasks/ner'
+
+        self.controller.post_request(endpoint, {
+            "project": project_id,
+            "attachment": attachment,
+            "attachment_type": "text",
+            "batch_name": batch_name if batch_name else "main (default)",
+            "tokens": tokens,
+            "annotations": annotations if bool(annotations) else [],
+            "type": 'named-entities',
+            "complete": complete,
+            "unique_id": unique_id
+        })
+
+
+    def upload_video_task(self,
+                          project_id: str,
+                          attachment: str,
+                          batch_name: str = None,
+                          annotations = None,
+                          complete: bool = False,
+                          unique_id: str = None):
+        endpoint = 'tasks/video'
+
+        self.controller.post_request(endpoint, {
+            "project": project_id,
+            "attachment": attachment,
+            "batch_name": batch_name if batch_name else "main (default)",
+            "annotations": annotations if bool(annotations) else [],
+            "type": 'video',
+            "complete": complete,
+            "unique_id": unique_id
         })
 
     def upload_image_task(self,
@@ -131,7 +188,8 @@ class LinLogClient:
                           image_path: str,
                           task_type: str = "image",
                           annotations = None,
-                          complete: bool = False):
+                          complete: bool = False,
+                          unique_id: str = None):
 
         endpoint = 'tasks/image/upload'
 
@@ -149,6 +207,7 @@ class LinLogClient:
                 "complete": complete,
                 "annotations": annotations,
                 "type": task_type,
+                "unique_id": unique_id,
                 "image": {}
             })
         }
@@ -160,11 +219,33 @@ class LinLogClient:
 
     def get_datasets(self):
         endpoint = "datasets"
-        return self.controller.get_request(endpoint)
+        return self.controller.get_request(endpoint)['results']
 
     def get_dataset(self, id: str):
         endpoint = f"datasets/{id}"
         return self.controller.get_request(endpoint)
+
+    def get_dataset_tasks(self, id: str, **kwargs):
+        for key in kwargs:
+            if key not in [
+                'limit', 'offset', 'created_date', 'created_date__gte', 'created_date__lte',
+                'created_date__gt', 'created_date__lt',
+            ]:
+                raise Exception(f"Invalid kwarg key: {key}")
+
+        limit = kwargs.get('limit', 100)
+        offset = kwargs.get('offset', 0)
+        endpoint = f"search/tasks?dataset={id}&offset={offset}&limit={limit}"
+        response = self.controller.post_request(endpoint, data={})
+
+        return Paginator[str](
+            response["results"],
+            response["count"],
+            limit,
+            offset,
+            response["previous"],
+            response["next"]
+        )
 
     def delete_tasks(self, task_ids: List[str]):
         endpoint = f"tasks"
