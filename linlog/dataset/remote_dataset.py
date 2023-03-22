@@ -28,7 +28,7 @@ class RemoteDataset(BaseDataset):
         self.labels = dataset['labels']
     
     def fetch_tasks(self) -> List[Task]:
-        tasks = self.client.get_dataset_tasks(self.id, offset=480, limit=50)
+        tasks = self.client.get_dataset_tasks(self.id, offset=0, limit=50)
         self.tasks.extend(tasks)
 
         total = tasks.count // tasks.limit
