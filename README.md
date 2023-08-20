@@ -341,10 +341,14 @@ tasks = import_tasks(
 
 ## Serialization
 
+Models from the schemas module come with (de)serialization functions. To serialize a model to a dictionary object call the `.to_dict()` function as shown below.
+
 ```python
 dataset_dict = dataset.to_dict()
 assert type(dataset_dict) is dict
 ```
+
+Likewise for other models serialization is achieved using:
 
 ```python
 project.to_dict()
@@ -354,15 +358,14 @@ annotation.to_dict()
 
 ## Deserialization
 
-```python
-dataset_dict = dataset.to_dict()
-assert type(dataset_dict) is dict
-```
+Deserialization takes a dictionary input and will output a model instance.
 
 ```python
-project.to_dict()
-task.to_dict()
-annotation.to_dict()
+
+dataset = Dataset.from_json({
+    "id": "dataset-id",
+    ...
+})
 ```
 
 
@@ -370,6 +373,7 @@ annotation.to_dict()
 
 | **Action**            | **Command**                  |
 |-----------------------|------------------------------|
+| Commands overview     | `$ linlog help`      |
 | Global authentication | `$ linlog authenticate`      |
 | List all datasets     | `$ linlog datasets`          |
 | Dataset info          | `$ linlog dataset-info [id]` |
