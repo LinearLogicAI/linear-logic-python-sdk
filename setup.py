@@ -5,8 +5,8 @@ with open("README.md", "r") as fh:
 
 
 setuptools.setup(
-    name='linlog',
-    version='0.3.1',
+    name='linearlogic',
+    version='0.4.0',
     author="Linear Logic Inc.",
     author_email="support@linearlogic.ai",
     description="Linear Logic Python SDK",
@@ -17,7 +17,8 @@ setuptools.setup(
     install_requires=[
         "awesome_progress_bar>=1.7.2",
         "requests>=2.28.1",
-        "colored==1.4.3"
+        "colored==1.4.3",
+        "rich==13.5.2"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

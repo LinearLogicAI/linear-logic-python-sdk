@@ -1,5 +1,4 @@
-import numpy as np
-from typing import Dict, Generic, List, TypeVar, Union
+from typing import Generic, List, TypeVar, Union
 
 
 T = TypeVar("T")
@@ -25,38 +24,20 @@ class Paginator(list, Generic[T]):
         self.next_url = next_url
         self.previous_url = previous_url
 
+    def transform_results(self, callback):
+        self.results = list(map(
+            lambda x: callback(x), self.results
+        ))
 
-def convert_bbox_to_polygon(annotation) -> List[Dict[str, float]]:
-    assert annotation['type'] == 'bounding-box', "Annotation instance must be a bounding box"
+    def __iter__(self):
+        for elem in self.results:
+            yield elem
 
-    vertices = [
-        { "x": annotation['left'], "y": annotation['top'] },
-        { "x": annotation['left'] + annotation['width'], "y": annotation['top'] },
-        { "x": annotation['left'] + annotation['width'], "y": annotation['top'] + annotation['height'] },
-        { "x": annotation['left'], "y": annotation['top'] + annotation['height'] }
-    ]
-
-    return vertices
-
-
-def polygon_sequence(vertices, rounded: bool = False) -> List[Union[int, float]]:
-
-    path: List[Union[int, float]] = []
-
-    for point in vertices:
-        # Clip coordinates to the image size
-        x = max(point["x"], 0)
-        y = max(point["y"], 0)
-        if rounded:
-            path.append(round(x))
-            path.append(round(y))
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            return self.__class__(self.results[idx])
         else:
-            path.append(x)
-            path.append(y)
+            return self.results[idx]
 
-    return path
-
-
-def compute_polygon_area(xs, ys):
-
-    return 0.5 * np.abs(np.dot(xs, np.roll(ys, 1)) - np.dot(ys, np.roll(xs, 1)))
+    def __len__(self) -> int:
+        return len(self.results)

@@ -1,89 +1,120 @@
+import json
 import numpy as np
+import itertools
+from tqdm import tqdm
+from pathlib import Path
 from typing import Iterator, List, Dict, Union
 from datetime import date
-from linlog.data_types.labels import DatasetLabel
-from linlog.data_types.task import Task
-from linlog.utils import compute_polygon_area, convert_bbox_to_polygon, polygon_sequence
+from linlog.constants import AnnotationType
+from linlog.schemas.annotation import Annotation, PolygonAnnotation
+from linlog.schemas.task import ImageTask
+from linlog.helpers import (
+    compute_polygon_area,
+    convert_bbox_to_polygon,
+    polygon_sequence
+)
 
 
-def export(tasks: List[Task], labels: List[DatasetLabel]):
+def export(tasks: List[ImageTask], output_path: Path):
 
-    categories: Dict[str, int] = format_categories(map(lambda l: l['label'], labels))
-    tag_categories: Dict[str, int] = {}
+    label_lookup = list(_build_categories(tasks))
     output = {
         "info": _create_info(),
         "licenses": _create_license(),
         "images": format_images(tasks),
-        "annotations": list(format_annotations(tasks, categories)),
-        "categories": list(_build_categories(categories)),
+        "annotations": list(format_annotations(tasks, label_lookup)),
+        "categories": list(_build_categories(tasks)),
         "tag_categories": list(),
     }
 
-    return output
+    output_file_path = (output_path / "output-coco").with_suffix(".json")
 
-def _build_categories(categories: Dict[str, int]) -> Iterator[Dict[str, Union[str, float, int]]]:
-    for name, id in categories.items():
-        yield {"id": id, "name": name, "supercategory": "root"}
+    with open(output_file_path, "w") as f:
+        json.dump(output, f, indent=2)
+    return output, output_file_path
 
-def format_image(task):
-    tags = []
 
+def _build_categories(
+    tasks: List[ImageTask]
+) -> Iterator[Dict[str, Union[str, float, int]]]:
+
+    annotations = list(itertools.chain(*[task.annotations for task in tasks]))
+    labels = set([annotation.label for annotation in annotations])
+    for idx, label in enumerate(labels):
+        yield {"id": idx, "name": label, "supercategory": "root"}
+
+
+def format_image(task: ImageTask):
     return {
         "license": 0,
-        "file_name": task.get('meta', {}).get('filename'),
+        "file_name": task.filename,
         "coco_url": "n/a",
-        "height": task.get('media_specs', {}).get("height"),
-        "width": task.get('media_specs', {}).get("width"),
+        "height": task.media_specs.height,
+        "width": task.media_specs.width,
         "date_captured": "",
         "flickr_url": "n/a",
-        "linear_logic_url": task['params']['attachment'],
-        "id": task['id'],
+        "linear_logic_url": task.attachment,
+        "id": task.id,
         "tag_ids": [],
     }
 
+
 def format_images(tasks):
-    return [format_image(task) for task in tasks]
+    return [format_image(task) for task in tqdm(tasks, desc="[COCO] Images")]
 
 
-def format_annotation(annotation, categories):
-    if annotation['type'] == 'bounding-box':
-        annotation['vertices'] = convert_bbox_to_polygon(annotation)
-        annotation['type'] = 'polygon'
+def format_annotation(task: ImageTask, annotation: Annotation, label_lookup):
+    if annotation.annotation_type == AnnotationType.BoundingBox:
+        return format_annotation(
+            task, convert_bbox_to_polygon(annotation), label_lookup
+        )
 
-        return format_annotation(annotation, categories)
+    elif annotation.annotation_type == AnnotationType.Polygon:
+        polygon_annotation: PolygonAnnotation = annotation
 
-    elif annotation['type'] == 'polygon':
-
-        x_coords = [v['x'] for v in annotation['vertices']]
-        y_coords = [v['y'] for v in annotation['vertices']]
-        min_x = np.min([np.min(x_coord) for x_coord in x_coords])
-        min_y = np.min([np.min(y_coord) for y_coord in y_coords])
-        max_x = np.max([np.max(x_coord) for x_coord in x_coords])
-        max_y = np.max([np.max(y_coord) for y_coord in y_coords])
+        x_coords = [v.x for v in polygon_annotation.segments[0].path]
+        y_coords = [v.y for v in polygon_annotation.segments[0].path]
+        min_x = float(np.min([np.min(x_coord) for x_coord in x_coords]))
+        min_y = float(np.min([np.min(y_coord) for y_coord in y_coords]))
+        max_x = float(np.max([np.max(x_coord) for x_coord in x_coords]))
+        max_y = float(np.max([np.max(y_coord) for y_coord in y_coords]))
         w = max_x - min_x
         h = max_y - min_y
-        
+
         # Compute the area of the polygon
-        poly_area = np.sum([compute_polygon_area(x_coord, y_coord) for x_coord, y_coord in zip(x_coords, y_coords)])
-        sequence = polygon_sequence(annotation['vertices'])
-        
+        poly_area = float(
+            compute_polygon_area(x_coords, y_coords)
+        )
+        sequence = polygon_sequence(zip(x_coords, y_coords))
+
+        label = next((sub for sub in label_lookup if
+            sub['name'] == annotation.label), None)
+        if not label:
+            print(
+                f"[warning] unknown label \"{annotation.label}\", "
+                "skipping annotation")
+            return None
+
         return {
-            "id": annotation['id'],
-            "image_id": annotation['id'],
-            "category_id": categories[annotation['label']],
+            "id": annotation.id,
+            "image_id": task.id,
+            "category_id": label['id'],
             "segmentation": sequence,
             "area": poly_area,
             "bbox": [min_x, min_y, w, h],
             "iscrowd": 0,
-            #"extra": _build_extra(annotation),
         }
 
 
-def format_annotations(tasks, categories):
+def format_annotations(tasks: List[ImageTask], label_lookup):
     output = []
-    for task in tasks:
-        output.extend([format_annotation(annotation, categories) for annotation in task['annotations']])
+    for task in tqdm(tasks, desc="[COCO] Annotations"):
+        output.extend([
+            format_annotation(task, annotation, label_lookup)
+            for annotation in task.annotations
+        ])
     return output
+
 
 def format_categories(labels: List[str]) -> Dict[str, int]:
     categories: Dict[str, int] = {}
@@ -105,14 +136,16 @@ def _create_info() -> Dict[str, str]:
     }
 
 
-def _create_license(url: str = "n/a", 
-                    id: int = 0, 
-                    name: str = "placeholder license") -> List[Dict[str, Union[str, int, float]]]:
+def _create_license(
+    url: str = "n/a",
+    id: int = 0,
+    name: str = "placeholder license"
+) -> List[Dict[str, Union[str, int, float]]]:
+
     return [
       {
-        "url": url, 
-        "id": id, 
+        "url": url,
+        "id": id,
         "name": name
       }
     ]
-

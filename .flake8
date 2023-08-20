@@ -1,0 +1,12 @@
+[flake8]
+extend-ignore = E131, E128, F821
+exclude =
+    .git,
+    tests,
+    setup.py,
+    test.py,
+    __pycache__,
+    docs/source/conf.py,
+    old,
+    build,
+    dist

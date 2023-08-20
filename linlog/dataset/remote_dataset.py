@@ -1,56 +1,70 @@
-import time
+from dataclasses import dataclass, field
 import os
-import json
-import requests
 import shutil
 from typing import List
 from awesome_progress_bar import ProgressBar
 from linlog.client import LinLogClient
 from linlog.constants import MODULE_ROOT
-from linlog.data_types.task import Task
-from linlog.dataset.base_dataset import BaseDataset
-from linlog.exporter.formats import coco, linlog
+from linlog.exporter import get_exporter
+from linlog.exporter.exporter import export_tasks
+from linlog.schemas.dataset import Dataset
+from linlog.schemas.task import Task
 
 
-class RemoteDataset(BaseDataset):
+@dataclass
+class RemoteDataset:
+
+    ll_dataset: Dataset = None
+    tasks: List[Task] = field(default_factory=list)
 
     def __init__(self, client: LinLogClient, id: str) -> None:
-        self.id = id
         self.client = client
+        self.ll_dataset = Dataset.get_by_id(client, id)
+        self.tasks = []
 
-        self._load_dataset()
+    def fetch_tasks(self, exclude_annotations=True) -> List[Task]:
 
-    def _load_dataset(self) -> None:
+        response = self.ll_dataset.get_tasks(
+            self.client,
+            offset=0,
+            limit=20,
+            exclude_annotations=exclude_annotations
+        )
+        self.tasks.extend(response)
 
-        dataset = self.client.get_dataset(self.id)
-        self.name = dataset['name']
-        self.dataset_type = dataset['type']
-        self.labels = dataset['labels']
-    
-    def fetch_tasks(self) -> List[Task]:
-        tasks = self.client.get_dataset_tasks(self.id, offset=0, limit=50)
-        self.tasks.extend(tasks)
+        total = response.count // response.limit
+        bar = ProgressBar(
+            total,
+            bar_length=80,
+            prefix="Fetching tasks from server",
+            use_eta=True
+        )
 
-        total = tasks.count // tasks.limit
-        bar = ProgressBar(total, bar_length=80, prefix="Fetching tasks from server", use_eta=True)
-        
-        while tasks.offset + tasks.limit < tasks.count:
+        while response.offset + response.limit < response.count:
             bar.iter()
-            tasks = self.client.get_dataset_tasks(self.id, limit=tasks.limit, offset=tasks.offset + tasks.limit)
-            self.tasks.extend(tasks)
+            response = self.ll_dataset.get_tasks(
+                self.client,
+                limit=response.limit,
+                offset=response.offset + response.limit,
+                exclude_annotations=exclude_annotations
+            )
+            self.tasks.extend(response)
 
         bar.stop()
         return self.tasks
 
     def pull(self):
-        self.tasks = self.fetch_tasks()
+        self.tasks = []
+        self.fetch_tasks(exclude_annotations=False)
 
-    def export(self, 
-               format: str="linear-logic", 
-               pull: bool=True):
-
+    def export(
+        self,
+        output_directory: os.PathLike,
+        format: str = "linearlogic",
+        pull: bool = False
+    ):
         root = MODULE_ROOT + os.sep + "datasets"
-        dataset_root = root + os.sep + self.name
+        dataset_root = root + os.sep + self.ll_dataset.name
 
         if not os.path.isdir(root):
             os.mkdir(root)
@@ -62,44 +76,20 @@ class RemoteDataset(BaseDataset):
 
         if os.path.isdir(dataset_root):
             shutil.rmtree(dataset_root)
-            
-        os.mkdir(dataset_root)
 
-        if format == "coco":
-            output = coco.export(self.tasks, self.labels)
-
-            with open(root + os.sep + self.name + ".json", "w") as f:
-                json.dump(output, f, indent=2)
-        else:
-            output = linlog.export(self.tasks, self.labels)
-            output["config"]["name"] = self.name
-            output["config"]["dataset_type"] = self.dataset_type
-
-            os.mkdir(dataset_root + os.sep + "tasks")
-            os.mkdir(dataset_root + os.sep + "images")
-
-            with open(dataset_root + os.sep + "config.json", "w") as f:
-                json.dump(output["config"], f, indent=2)
-
-            for task in output['tasks']:
-                with open(dataset_root + os.sep + "tasks" + os.sep + task['id'] + ".json", "w") as f:
-                    json.dump(task, f, indent=2)
-
-            if task['params']['attachment_type'] == 'image':
-                total = len(output['tasks'])
-                bar = ProgressBar(total, bar_length=80, prefix="Downloading images", use_eta=True)
-                bar.iter()
-
-                for task in output['tasks']:
-                    img_data = requests.get(task['params']['attachment']).content
-                    with open(dataset_root + os.sep + "images" + os.sep + task['id'] + '.jpg', 'wb') as handler:
-                        handler.write(img_data)
-                    bar.iter()
-
-                bar.stop()
+        export_tasks(
+            get_exporter(format if format else 'linearlogic'),
+            self.tasks,
+            output_directory
+        )
 
         return dataset_root
 
     def __getitem__(self, index):
         return self.tasks[index]
-        
+
+    def __len__(self):
+        return len(self.tasks)
+
+    def __str__(self) -> str:
+        return f"RemoteDataset(id={self.ll_dataset.id})"

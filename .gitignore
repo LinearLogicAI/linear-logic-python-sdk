@@ -1,0 +1,11 @@
+build_pkg.sh
+snippets.md
+test.py
+linlog.egg-info/
+linearlogic.egg-info/
+dist/
+build/
+~/
+.idea/
+**/__pycache__/
+**/*.pyc
